@@ -1,3 +1,43 @@
+<?php
+session_start();
+require 'db_config.php';
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+
+if (isset($_SESSION['user_id'])) {
+    $user_id = $_SESSION['user_id'];
+
+    $sql = "SELECT name FROM buyers WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+
+    if ($stmt === false) {
+        die('Error preparing the SQL query: ' . $conn->error);
+    }
+
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $user = $result->fetch_assoc();
+    } else {
+        echo "User not found";
+        exit();
+    }
+} else {
+    header("Location: login.php");
+    exit();
+}
+
+// Fetch all crops from the database
+$sql_crops = "SELECT id, name, price FROM crops";
+$result_crops = $conn->query($sql_crops);
+
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -14,7 +54,7 @@
             <h1>🛒 Buyer Dashboard 🛒</h1>
         </div>
         <div class="header-right">
-            <span>Welcome, <strong>Md. Rahim</strong></span>
+            <span>Welcome, <?php echo htmlspecialchars($user['name']); ?></span>
             <a href="logout.php">
                 <button type="button">Logout</button>
             </a>
@@ -33,30 +73,21 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>Rice</td>
-                        <td>45 ৳</td>
-                    </tr>
-                    <tr>
-                        <td>Wheat</td>
-                        <td>40 ৳</td>
-                    </tr>
-                    <tr>
-                        <td>Maize</td>
-                        <td>30 ৳</td>
-                    </tr>
-                    <tr>
-                        <td>Potato</td>
-                        <td>25 ৳</td>
-                    </tr>
-                    <tr>
-                        <td>Onion</td>
-                        <td>50 ৳</td>
-                    </tr>
+                    <?php
+                    if ($result_crops && $result_crops->num_rows > 0) {
+                        while ($row = $result_crops->fetch_assoc()) {
+                            echo "<tr>";
+                            echo "<td>" . htmlspecialchars($row['name']) . "</td>";
+                            echo "<td>" . htmlspecialchars($row['price']) . " ৳</td>";
+                            echo "</tr>";
+                        }
+                    } else {
+                        echo "<tr><td colspan='2' class='text-center'>No crop data found</td></tr>";
+                    }
+                    ?>
                 </tbody>
             </table>
         </section>
-        
         <section class="crop-listings">
             <h2>Available Crops</h2>
             <div class="search-bar">
@@ -89,7 +120,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2025 Market Information System for Farmers</p>
+        <p>© 2025 Market Information System for Farmers</p>
     </footer>
 </body>
 

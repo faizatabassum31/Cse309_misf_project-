@@ -1,3 +1,45 @@
+<?php
+session_start();
+require 'db_config.php';
+
+$user_id = $_SESSION['user_id'];
+$sql = "SELECT * FROM farmers WHERE id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$user = $result->fetch_assoc();
+$stmt->close();
+
+$farmer_email = $user['email']; 
+
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $activity_date = $_POST['activity_date'];
+    $activity_description = $_POST['activity_description'];
+    $status = $_POST['status'];
+    $remarks = $_POST['remarks'];
+
+    $insert_sql = "INSERT INTO farmer_activities (farmer_email, activity_date, activity_description, status, remarks) 
+                   VALUES (?, ?, ?, ?, ?)";
+    $stmt = $conn->prepare($insert_sql);
+    $stmt->bind_param("sssss", $farmer_email, $activity_date, $activity_description, $status, $remarks);
+    $stmt->execute();
+    $stmt->close();
+
+    header("Location: farmer_dashboard.php");
+    exit();
+}
+
+
+$activities_sql = "SELECT * FROM farmer_activities WHERE farmer_email = ?";
+$stmt = $conn->prepare($activities_sql);
+$stmt->bind_param("s", $farmer_email);
+$stmt->execute();
+$activities_result = $stmt->get_result();
+$stmt->close();
+$conn->close();
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -15,7 +57,7 @@
             <h1>🌾 Farmers Dashboard 🌾</h1>
         </div>
         <div class="header-right">
-            <span>Welcome, <strong>Shahidul Islam</strong></span>
+            <span>Welcome, <?php echo $user['name']; ?></span>
             <a href="logout.php">
                 <button type="button">Logout</button>
             </a>
@@ -34,21 +76,24 @@
     <main class="dashboard">
         <section id="welcome">
             <h2>👋 Welcome, Farmer!</h2>
-            <p>Your one-stop solution for real-time market data, personalized recommendations, weather updates, and more.</p>
+            <p>Your one-stop solution for real-time market data, personalized recommendations, weather updates, and
+                more.</p>
         </section>
 
         <section class="farmer-overview">
             <h2>Farmer's Overview</h2>
             <div class="farmer-card">
-                <p><strong>Name:</strong> Shahidul Islam</p>
-                <p><strong>Age:</strong> 42</p>
-                <p><strong>Farm Type:</strong> Rice & Vegetable</p>
-                <p><strong>Location:</strong> Rajshahi, Bangladesh</p>
-                <p><strong>Land Size:</strong> 5 acres</p>
-                <p><strong>Crops Grown:</strong> Rice, Wheat, Tomatoes</p>
-                <p><strong>Livestock:</strong> Cows, Chickens</p>
+                <p><strong>Name:</strong> <?php echo $user['name']; ?></p>
+                <p><strong>Age:</strong> <?php echo $user['age']; ?></p>
+                <p><strong>Farm Type:</strong> <?php echo $user['farm_type']; ?></p>
+                <p><strong>Location:</strong> <?php echo $user['location']; ?></p>
+                <p><strong>Land Size:</strong> <?php echo $user['land_size']; ?></p>
+                <p><strong>Crops Grown:</strong> <?php echo $user['crops_grown']; ?></p>
+                <p><strong>Livestock:</strong> <?php echo $user['livestock']; ?></p>
+
             </div>
         </section>
+
 
         <section class="farmer-activities">
             <h2>Recent Activities</h2>
@@ -62,27 +107,18 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <?php while ($activity = $activities_result->fetch_assoc()): ?>
                     <tr>
-                        <td>2025-04-18</td>
-                        <td>Harvested Wheat</td>
-                        <td>Completed</td>
-                        <td>Successfully harvested 200kg of wheat.</td>
+                        <td><?php echo htmlspecialchars($activity['activity_date']); ?></td>
+                        <td><?php echo htmlspecialchars($activity['activity_description']); ?></td>
+                        <td><?php echo htmlspecialchars($activity['status']); ?></td>
+                        <td><?php echo htmlspecialchars($activity['remarks']); ?></td>
                     </tr>
-                    <tr>
-                        <td>2025-04-12</td>
-                        <td>Planted Tomatoes</td>
-                        <td>In Progress</td>
-                        <td>Planted in the northern section of the farm.</td>
-                    </tr>
-                    <tr>
-                        <td>2025-04-05</td>
-                        <td>Sold Milk</td>
-                        <td>Completed</td>
-                        <td>Sold 50 liters of milk to local markets.</td>
-                    </tr>
+                    <?php endwhile; ?>
                 </tbody>
             </table>
         </section>
+
 
         <section class="registration-form">
             <h2>Add a New Activity</h2>
@@ -119,17 +155,22 @@
             </form>
         </section>
 
+
+
         <section class="statistics">
             <h2>Farming Statistics</h2>
             <canvas id="activityChart" width="400" height="200"></canvas>
             <div class="stats-info">
-                <p><strong>Total Crops Harvested in 2025:</strong> 120 Tons</p>
+                <p><strong>Total Crops Harvested in 2024:</strong> 120 Tons</p>
                 <p><strong>Livestock Production:</strong> 500 Liters of Milk Daily</p>
                 <p><strong>Monthly Revenue:</strong> 8,000 taka</p>
                 <p><strong>Farm Expenses:</strong> 3,500 taka</p>
                 <p><strong>Profit Margin:</strong> 4,500 taka</p>
             </div>
         </section>
+        <footer>
+        <p>© 2025 Market Information System for Farmers</p>
+    </footer>
     </main>
 
     <script>
